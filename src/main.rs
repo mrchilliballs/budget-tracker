@@ -40,46 +40,54 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum TransactionCmds {
-    Add { amount: Decimal },
+    Add { amount: Decimal, category: String },
     Remove { index: NonZero<usize> },
     List,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Transaction {
     // TODO: time
     kind: TransactionKind,
+    amount: Decimal,
+    category: String,
 }
 
 impl Transaction {
-    fn new(kind: TransactionKind) -> Self {
-        Self { kind }
+    fn new(kind: TransactionKind, amount: Decimal, category: String) -> Self {
+        Self {
+            kind,
+            amount,
+            category,
+        }
     }
 
     fn kind(&self) -> TransactionKind {
         self.kind
     }
+
+    fn amount(&self) -> Decimal {
+        self.amount
+    }
+
+    fn category(&self) -> &str {
+        &self.category
+    }
 }
 
 impl Display for Transaction {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.kind)
+        match self.kind {
+            TransactionKind::Income => write!(f, "+{}", self.amount),
+            TransactionKind::Expense => write!(f, "-{}", self.amount),
+        }
     }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum TransactionKind {
-    Income { amount: Decimal },
-    Expense { amount: Decimal },
-}
-
-impl Display for TransactionKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Income { amount } => write!(f, "+{amount}"),
-            Self::Expense { amount } => write!(f, "-{amount}"),
-        }
-    }
+    Income,
+    Expense,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -88,14 +96,19 @@ struct App {
 }
 
 impl App {
+    const SAVE_PATH: &'static str = "Budget_Tracker.toml";
     fn build() -> Result<Self> {
         match fs::read_to_string(Self::SAVE_PATH) {
             io::Result::Ok(string) => Ok(toml::from_str(&string)?),
             io::Result::Err(err) if err.kind() == io::ErrorKind::NotFound => {
                 let default_app = App {
                     transactions: vec![
-                        Transaction::new(TransactionKind::Income { amount: dec!(69) }),
-                        Transaction::new(TransactionKind::Expense { amount: dec!(67) }),
+                        Transaction::new(
+                            TransactionKind::Income,
+                            dec!(69),
+                            "groceries".to_string(),
+                        ),
+                        Transaction::new(TransactionKind::Expense, dec!(67), "rent".to_string()),
                     ],
                 };
                 default_app.save()?;
@@ -111,7 +124,6 @@ impl App {
         fs::write(Self::SAVE_PATH, toml::to_string_pretty(self)?)?;
         Ok(())
     }
-    const SAVE_PATH: &str = "Budget_Tracker.toml";
     fn transactions(&self) -> &[Transaction] {
         &self.transactions
     }
@@ -140,23 +152,23 @@ fn main() -> Result<()> {
     };
     match command {
         Commands::Summary {} => {
-            println!(
-                "Total: {}",
-                app.transactions()
-                    .iter()
-                    .fold(dec!(0), |total, transaction| match transaction.kind() {
-                        TransactionKind::Income { amount } => total + amount,
-                        TransactionKind::Expense { amount } => total - amount,
-                    })
-            )
+            let total = app
+                .transactions()
+                .iter()
+                .fold(dec!(0), |total, transaction| match transaction.kind() {
+                    TransactionKind::Income => total + transaction.amount(),
+                    TransactionKind::Expense => total - transaction.amount(),
+                });
+
+            println!("Total: {}{total}", if total > dec!(0) { "+" } else { "" })
         }
         Commands::Income { command: None }
         | Commands::Income {
             command: Some(TransactionCmds::List),
         } => {
             let transactions_iter = app.transactions().iter().filter_map(|transaction| {
-                if let TransactionKind::Income { amount } = transaction.kind() {
-                    Some(amount)
+                if let TransactionKind::Income = transaction.kind() {
+                    Some(transaction.amount())
                 } else {
                     None
                 }
@@ -177,8 +189,8 @@ fn main() -> Result<()> {
             command: Some(TransactionCmds::List),
         } => {
             let transactions_iter = app.transactions().iter().filter_map(|transaction| {
-                if let TransactionKind::Expense { amount } = transaction.kind() {
-                    Some(amount)
+                if let TransactionKind::Expense = transaction.kind() {
+                    Some(transaction.amount())
                 } else {
                     None
                 }
@@ -195,9 +207,9 @@ fn main() -> Result<()> {
             }
         }
         Commands::Income {
-            command: Some(TransactionCmds::Add { amount }),
+            command: Some(TransactionCmds::Add { amount, category }),
         } => {
-            app.add_transaction(Transaction::new(TransactionKind::Income { amount }));
+            app.add_transaction(Transaction::new(TransactionKind::Income, amount, category));
         }
         Commands::Income {
             command: Some(TransactionCmds::Remove { index }),
@@ -205,9 +217,9 @@ fn main() -> Result<()> {
             app.remove_transaction(index);
         }
         Commands::Expense {
-            command: Some(TransactionCmds::Add { amount }),
+            command: Some(TransactionCmds::Add { amount, category }),
         } => {
-            app.add_transaction(Transaction::new(TransactionKind::Expense { amount }));
+            app.add_transaction(Transaction::new(TransactionKind::Expense, amount, category));
         }
         Commands::Expense {
             command: Some(TransactionCmds::Remove { index }),
