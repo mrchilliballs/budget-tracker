@@ -1,9 +1,0 @@
-[[transactions]]
-
-[transactions.kind.Income]
-amount = "69"
-
-[[transactions]]
-
-[transactions.kind.Expense]
-amount = "67"
