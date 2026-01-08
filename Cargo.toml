@@ -12,5 +12,6 @@ color-eyre = "0.6.5"
 rust_decimal = { version = "1.39.0", features = ["db-postgres", "macros"] }
 serde = { version = "1.0.228", features = ["derive"] }
 sqlx = { version = "0.8.6", features = [ "runtime-async-std", "tls-native-tls", "postgres", "migrate", "time", "rust_decimal" ] }
+time = { version = "0.3.44", features = ["serde"] }
 tokio = { version = "1.48.0", features = ["full"] }
 toml = "0.9.10"

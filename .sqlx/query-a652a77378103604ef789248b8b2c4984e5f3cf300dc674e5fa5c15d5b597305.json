@@ -1,16 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT description, amount\n        FROM budget;\n    ",
+  "query": "\n        SELECT category, SUM(amount)\n        FROM budget\n        WHERE category IS NOT NULL\n        GROUP BY category;\n    ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "description",
+        "name": "category",
         "type_info": "Text"
       },
       {
         "ordinal": 1,
-        "name": "amount",
+        "name": "sum",
         "type_info": "Numeric"
       }
     ],
@@ -19,8 +19,8 @@
     },
     "nullable": [
       false,
-      false
+      null
     ]
   },
-  "hash": "27572bb0574ce063db1b9dbeeffcdfb3eb44a2328835518046ed4f51b6f28681"
+  "hash": "a652a77378103604ef789248b8b2c4984e5f3cf300dc674e5fa5c15d5b597305"
 }
