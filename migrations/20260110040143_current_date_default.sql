@@ -1,0 +1,5 @@
+ALTER TABLE IF EXISTS budget 
+  RENAME COLUMN date TO timestamp;
+ALTER TABLE IF EXISTS budget 
+  ALTER COLUMN timestamp TYPE TIMESTAMP,
+  ALTER COLUMN timestamp SET DEFAULT now();
